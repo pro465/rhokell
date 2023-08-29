@@ -1,7 +1,17 @@
 # smallfuck interpreter
 # give it an expression of the syntax smf(prog, mem)
 # where prog is the program, mem is the initial memory
-
+# both are cons lists consisting of Cons(a, l) and Nil().
+# prog encoding   | smallfuck instructions
+#      Left()     | `<`
+#      Right()    | `>`
+#      Flip()     | `*`
+#      LBrace()   | `[`
+#      RBrace()   | `]`
+#
+# memory encoding:
+#      F() means 0
+#      T() means 1
 
 smf(prog, mem) = eval(prep(prog, Nil()), mem);
 
@@ -14,19 +24,24 @@ prep(Cons(x, rem), before) = prep(rem, append(before, Cons(x, Nil())));
 # before [inside_loop] after
 expand(before, Pair(inside_loop, after)) = append(before, Cons(While(inside_loop), after));
 
-append(Nil(), x) = x;
-append(Cons(x, y), z) = Cons(x, append(y, z));
 
+# evaluate the instructions
 eval(Nil(), mem) = mem;
-eval(prog, Nil()) = eval(prog, Cons(O(), Nil()));
-eval(Cons(Flip(), rem), Cons(I(), x)) = eval(rem, Cons(O(), x));
-eval(Cons(Flip(), rem), Cons(O(), x)) = eval(rem, Cons(I(), x));
+eval(prog, Nil()) = eval(prog, Cons(F(), Nil()));
+eval(Cons(Flip(), rem), Cons(T(), x)) = eval(rem, Cons(F(), x));
+eval(Cons(Flip(), rem), Cons(F(), x)) = eval(rem, Cons(T(), x));
 eval(Cons(Right(), rem), Cons(b, x)) = hold(b, eval(rem, x));
 eval(Cons(Left(), rem), mem) = MoveLeft(rem, mem);
 eval(Cons(While(body), rem), mem) = loop(body, mem, rem);
 
+## helpers
+# adds one list to the end of the other list
+append(Nil(), x) = x;
+append(Cons(x, y), z) = Cons(x, append(y, z));
+
+# hold a value unless and/or until it is required again
 hold(b, MoveLeft(rem, mem)) = eval(rem, Cons(b, mem));
 hold(b, x) = Cons(b, x);
-
-loop(b, Cons(O(), mem), rem) = eval(rem, Cons(O(), mem));
-loop(b, Cons(I(), mem), rem) = loop(b, eval(b, Cons(I(), mem)), rem);
+# looping behaviours
+loop(b, Cons(F(), mem), rem) = eval(rem, Cons(F(), mem));
+loop(b, Cons(T(), mem), rem) = loop(b, eval(b, Cons(T(), mem)), rem);

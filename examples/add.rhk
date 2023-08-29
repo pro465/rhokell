@@ -1,0 +1,6 @@
+add (z(), y) = y;
+add (s(x), y) = s(add(x, y));
+mul (z(), y) = z();
+mul (s(x), y) = add(y, mul(x, y));
+exp (x, z()) = s(z());
+exp (x, s(y)) = mul(x, exp(x, y));

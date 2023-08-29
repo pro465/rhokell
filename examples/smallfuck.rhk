@@ -5,6 +5,7 @@
 
 smf(prog, mem) = eval(prep(prog, Nil()), mem);
 
+# change .. [<code>] .. to .. While(<code>) ..
 prep(Nil(), x) = x;
 prep(Cons(LBrace(), rem), before) = expand(before, prep(rem, Nil()));
 prep(Cons(RBrace(), rem), before) = Pair(before, prep(rem, Nil()));
@@ -14,7 +15,7 @@ prep(Cons(x, rem), before) = prep(rem, append(before, Cons(x, Nil())));
 expand(before, Pair(inside_loop, after)) = append(before, Cons(While(inside_loop), after));
 
 append(Nil(), x) = x;
-append(Cons(x, y), z) = Cons(x, push(y, z));
+append(Cons(x, y), z) = Cons(x, append(y, z));
 
 eval(Nil(), mem) = mem;
 eval(prog, Nil()) = eval(prog, Cons(O(), Nil()));
@@ -24,7 +25,7 @@ eval(Cons(Right(), rem), Cons(b, x)) = hold(b, eval(rem, x));
 eval(Cons(Left(), rem), mem) = MoveLeft(rem, mem);
 eval(Cons(While(body), rem), mem) = loop(body, mem, rem);
 
-hold(b, MoveLeft(rem, mem)) = eval(rem, Cons(b, rem));
+hold(b, MoveLeft(rem, mem)) = eval(rem, Cons(b, mem));
 hold(b, x) = Cons(b, x);
 
 loop(b, Cons(O(), mem), rem) = eval(rem, Cons(O(), mem));

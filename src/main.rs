@@ -19,23 +19,36 @@ fn main() {
     //dbg!(&rules);
 
     println!("welcome to rhokell v0.1.0!\ninput `q`, `quit`, or `exit` for exiting the REPL");
-    print!("==> ");
-    io::stdout().flush().unwrap();
 
-    for line in std::io::stdin()
+    let mut lines = std::io::stdin()
         .lines()
-        .map(|e| e.expect("could not read input"))
-    {
-        if ["quit", "exit", "q"].contains(&&line[..]) {
+        .map(|e| e.expect("could not read input"));
+
+    let mut prompt = |s| {
+        print!("{s} ");
+        io::stdout().flush().unwrap();
+        lines.next()
+    };
+
+    while let Some(mut line) = prompt("=>") {
+        if is_quit(&line) {
             break;
         }
+        while line.chars().filter(|&c| c == '(').count()
+            > line.chars().filter(|&c| c == ')').count()
+        {
+            let t = match prompt("..") {
+                Some(x) if !is_quit(&x) => x,
+                _ => break,
+            };
+            line.push_str(&t);
+        }
+
         let expr = rhokell::parse_expr(line);
         let mut expr = match expr {
             Ok(x) => x,
             Err(e) => {
                 e.report();
-                print!("==> ");
-                io::stdout().flush().unwrap();
                 continue;
             }
         };
@@ -43,11 +56,9 @@ fn main() {
         rhokell::apply(&rules, &mut expr);
 
         println!("{}", expr);
-
-        print!("==> ");
-        io::stdout().flush().unwrap();
     }
 }
+
 fn help() -> ! {
     println!(
         "usage: {} <filename>",
@@ -56,4 +67,8 @@ fn help() -> ! {
             .display()
     );
     std::process::exit(-1);
+}
+
+fn is_quit(s: &str) -> bool {
+    ["quit", "exit", "q"].contains(&s)
 }

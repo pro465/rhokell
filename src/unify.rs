@@ -1,14 +1,10 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
-use crate::{Def, Expr};
+use crate::{Def, Expr, Func};
 impl Def {
     pub fn apply(&self, e: &mut Expr) -> bool {
         let mut bindings = HashMap::new();
-        if !unify(
-            &mut bindings,
-            Rc::new(RefCell::new(self.pat.clone())),
-            Rc::new(RefCell::new(e.clone())),
-        ) {
+        if !unify(&mut bindings, &self.pat, e) {
             return false;
         }
         let new_expr = substitute(&bindings, &self.rep);
@@ -17,30 +13,31 @@ impl Def {
     }
 }
 
-fn unify(
-    b: &mut HashMap<String, Rc<RefCell<Expr>>>,
-    pat: Rc<RefCell<Expr>>,
-    e: Rc<RefCell<Expr>>,
-) -> bool {
-    match (&*pat.borrow(), &*e.borrow()) {
+fn unify<'a>(b: &mut HashMap<&'a str, &'a Expr>, pat: &'a Expr, e: &'a Expr) -> bool {
+    match (pat, e) {
         (Expr::Var { name, .. }, _) => {
             if let Some(e2) = b.get(&name[..]) {
                 *e2 == e
             } else {
-                b.insert(name.clone(), e.clone());
+                b.insert(name, e);
                 true
             }
         }
-        (
-            Expr::Func { name, args, .. },
-            Expr::Func {
-                name: name2,
-                args: args2,
-                ..
-            },
-        ) if name2 == name && args.len() == args2.len() => {
-            for (p, e) in args.iter().zip(args2.iter()) {
-                if !unify(b, p.clone(), e.clone()) {
+        (Expr::Func(f1), Expr::Func(f2))
+            if f1.name == f2.name && f1.args.len() == f2.args.len() =>
+        {
+            for (p, e) in f1.args.iter().zip(f2.args.iter()) {
+                if !unify(b, p, e) {
+                    return false;
+                }
+            }
+            true
+        }
+        (Expr::Func(f1), Expr::RedFunc(f2))
+            if f1.name == f2.name && f1.args.len() == f2.args.len() =>
+        {
+            for (p, e) in f1.args.iter().zip(f2.args.iter()) {
+                if !unify(b, p, e) {
                     return false;
                 }
             }
@@ -50,19 +47,14 @@ fn unify(
     }
 }
 
-fn substitute(b: &HashMap<String, Rc<RefCell<Expr>>>, rep: &Expr) -> Expr {
+fn substitute(b: &HashMap<&str, &Expr>, rep: &Expr) -> Expr {
     match rep {
-        Expr::Var { name, .. } => b[name].borrow().clone(),
-        Expr::Func {
-            loc, name, args, ..
-        } => Expr::Func {
-            loc: *loc,
-            name: name.clone(),
-            args: args
-                .iter()
-                .map(|e| Rc::new(RefCell::new(substitute(b, &e.borrow()))))
-                .collect(),
-            reduced: false,
-        },
+        Expr::Var { name, .. } => b[&name[..]].clone(),
+        Expr::Func(f) => Expr::Func(Func {
+            loc: f.loc,
+            name: f.name.clone(),
+            args: f.args.iter().map(|e| substitute(b, &e)).collect(),
+        }),
+        _ => unreachable!(),
     }
 }

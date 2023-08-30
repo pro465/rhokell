@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt::Display, rc::Rc};
+use std::{fmt::Display, rc::Rc};
 
 use crate::{
     error::{Error, Loc},
@@ -15,24 +15,26 @@ pub struct Def {
 
 #[derive(Clone, Debug)]
 pub enum Expr {
-    Var {
-        name: String,
-        loc: Loc,
-    },
-    Func {
-        loc: Loc,
-        name: String,
-        args: Vec<Rc<RefCell<Expr>>>,
-        // recordas whether this expression, along ith its subexpressions are reduced or not
-        reduced: bool,
-    },
+    Var { name: String, loc: Loc },
+    // reduced function
+    RedFunc(Rc<Func>),
+    // unreduced function
+    Func(Func),
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Func {
+    pub(crate) loc: Loc,
+    pub(crate) name: String,
+    pub(crate) args: Vec<Expr>,
 }
 
 impl Expr {
     pub(crate) fn loc(&self) -> Loc {
         match self {
             Expr::Var { loc, .. } => *loc,
-            Expr::Func { loc, .. } => *loc,
+            Expr::Func(Func { loc, .. }) => *loc,
+            Expr::RedFunc(f) => f.loc,
         }
     }
 }
@@ -41,23 +43,24 @@ impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Expr::Var { name, .. }, Expr::Var { name: name2, .. }) => name == name2,
-            (
-                Expr::Func { name, args, .. },
-                Expr::Func {
-                    name: name2,
-                    args: args2,
-                    ..
-                },
-            ) => name == name2 && args == args2,
+            (Expr::RedFunc(f1), Expr::RedFunc(f2)) => f1 == f2,
+            (Expr::Func(f1), Expr::Func(f2)) => f1 == f2,
             _ => false,
         }
+    }
+}
+
+impl PartialEq for Func {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.args == other.args
     }
 }
 
 impl Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         stacker::maybe_grow(32 * 1024, 1024 * 1024, || match self {
-            Expr::Func { name, args, .. } => {
+            Expr::RedFunc(fun) => {
+                let Func { name, args, .. } = &**fun;
                 write!(f, "{}", name)?;
                 if args.len() != 1 {
                     write!(f, "(")?;
@@ -65,7 +68,25 @@ impl Display for Expr {
                     write!(f, " ")?;
                 }
                 for (i, arg) in args.iter().enumerate() {
-                    write!(f, "{}", arg.borrow())?;
+                    write!(f, "{}", &arg)?;
+                    if i < args.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                if args.len() != 1 {
+                    write!(f, ")")?;
+                }
+                Ok(())
+            }
+            Expr::Func(Func { name, args, .. }) => {
+                write!(f, "{}", name)?;
+                if args.len() != 1 {
+                    write!(f, "(")?;
+                } else {
+                    write!(f, " ")?;
+                }
+                for (i, arg) in args.iter().enumerate() {
+                    write!(f, "{}", &arg)?;
                     if i < args.len() - 1 {
                         write!(f, ", ")?;
                     }
@@ -94,8 +115,8 @@ impl<'a> Parser<'a> {
         }
         let pat = self.parse_expr::<true>()?;
         let (name, loc) = match &pat {
-            Expr::Func { loc, name, .. } => (name.clone(), *loc),
-            Expr::Var { .. } => unreachable!(),
+            Expr::Func(f) => (f.name.clone(), f.loc),
+            _ => unreachable!(),
         };
         self.sc.expect_token(TokenTy::Equal)?;
         let rep = self.parse_expr::<false>()?;
@@ -113,13 +134,8 @@ impl<'a> Parser<'a> {
         let (loc, name) = self.sc.expect_identifier()?;
 
         if self.sc.is_identifier()? {
-            let args = vec![Rc::new(RefCell::new(self.parse_expr::<false>()?))];
-            return Ok(Expr::Func {
-                name,
-                args,
-                loc,
-                reduced: false,
-            });
+            let args = vec![self.parse_expr::<false>()?];
+            return Ok(Expr::Func(Func { name, args, loc }));
         }
 
         if B {
@@ -131,19 +147,14 @@ impl<'a> Parser<'a> {
         if !self.sc.is_token(TokenTy::Rparen)? {
             loop {
                 let s = self.parse_expr::<false>()?;
-                args.push(Rc::new(RefCell::new(s)));
+                args.push(s);
                 if self.expect_commma_or(TokenTy::Rparen)? {
                     break;
                 }
             }
         }
 
-        Ok(Expr::Func {
-            name,
-            args,
-            loc,
-            reduced: false,
-        })
+        Ok(Expr::Func(Func { name, args, loc }))
     }
 
     fn expect_commma_or(&mut self, b: TokenTy) -> Result<bool, Error> {

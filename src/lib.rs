@@ -1,11 +1,14 @@
-use error::{Error, ErrorTy};
-use parser::{Def, Expr};
-use std::collections::{HashMap, HashSet};
+use error::{Error, ErrorTy, Loc};
+use parser::{Def, Expr, Func};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 mod error;
 mod parser;
 mod token;
-pub mod unify;
+mod unify;
 
 pub fn parse(src: String) -> Result<HashMap<String, Vec<Def>>, Error> {
     let scanner = token::Scanner::new(&src);
@@ -32,15 +35,9 @@ pub fn apply(defs: &HashMap<String, Vec<Def>>, e: &mut Expr) -> bool {
 
         loop {
             match &mut *e {
-                Expr::Func {
-                    name,
-                    args,
-                    reduced,
-                    ..
-                } if !*reduced => {
-                    for a in args.iter().cloned() {
-                        let mut a = (*a).borrow_mut();
-                        changed |= apply(defs, &mut *a);
+                Expr::Func(Func { name, args, .. }) => {
+                    for a in args.iter_mut() {
+                        changed |= apply(defs, a);
                     }
                     if !defs.contains_key(name) || !defs[name].iter().any(|def| def.apply(e)) {
                         mark_reduced(e);
@@ -55,11 +52,8 @@ pub fn apply(defs: &HashMap<String, Vec<Def>>, e: &mut Expr) -> bool {
 }
 
 fn mark_reduced(e: &mut Expr) {
-    match e {
-        Expr::Var { .. } => {}
-        Expr::Func { reduced, args, .. } => {
-            *reduced = true;
-        }
+    if let Expr::Func(f) = e {
+        *e = Expr::RedFunc(Rc::new(std::mem::take(f)))
     }
 }
 
@@ -85,7 +79,9 @@ fn vars(v: &mut HashSet<String>, e: &Expr) {
         Expr::Var { name, .. } => {
             v.insert(name.clone());
         }
-        Expr::Func { args, .. } => args.iter().for_each(|i| vars(v, &i.borrow())),
+        Expr::Func(Func { args, .. }) => args.iter().for_each(|i| vars(v, &i)),
+
+        Expr::RedFunc(f) => f.args.iter().for_each(|i| vars(v, &i)),
     }
 }
 

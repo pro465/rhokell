@@ -38,6 +38,12 @@ impl Display for Loc {
     }
 }
 
+impl Default for Loc {
+    fn default() -> Self {
+        Loc::new()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum ErrorTy {
     SyntaxError,

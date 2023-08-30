@@ -1,9 +1,6 @@
 use error::{Error, ErrorTy};
 use parser::{Def, Expr};
-use std::{
-    collections::{HashMap, HashSet},
-    rc::Rc,
-};
+use std::collections::{HashMap, HashSet};
 
 mod error;
 mod parser;
@@ -35,19 +32,35 @@ pub fn apply(defs: &HashMap<String, Vec<Def>>, e: &mut Expr) -> bool {
 
         loop {
             match &mut *e {
-                Expr::Func { name, args, .. } => {
-                    for a in args.iter_mut().map(Rc::make_mut) {
-                        changed |= apply(defs, a);
+                Expr::Func {
+                    name,
+                    args,
+                    reduced,
+                    ..
+                } if !*reduced => {
+                    for a in args.iter().cloned() {
+                        let mut a = (*a).borrow_mut();
+                        changed |= apply(defs, &mut *a);
                     }
                     if !defs.contains_key(name) || !defs[name].iter().any(|def| def.apply(e)) {
+                        mark_reduced(e);
                         break changed;
                     }
                     changed = true;
                 }
-                Expr::Var { .. } => break changed,
+                _ => break changed,
             }
         }
     })
+}
+
+fn mark_reduced(e: &mut Expr) {
+    match e {
+        Expr::Var { .. } => {}
+        Expr::Func { reduced, args, .. } => {
+            *reduced = true;
+        }
+    }
 }
 
 fn check_closed(def: &Def) -> Result<(), Error> {
@@ -55,7 +68,7 @@ fn check_closed(def: &Def) -> Result<(), Error> {
     vars(&mut pat_vars, &def.pat);
     let mut rep_vars = HashSet::new();
     vars(&mut rep_vars, &def.rep);
-    let undefined: Vec<_> = rep_vars.difference(&pat_vars).copied().collect();
+    let undefined: Vec<_> = rep_vars.difference(&pat_vars).cloned().collect();
     if !undefined.is_empty() {
         Err(Error {
             loc: def.rep.loc(),
@@ -67,16 +80,16 @@ fn check_closed(def: &Def) -> Result<(), Error> {
     }
 }
 
-fn vars<'a>(v: &mut HashSet<&'a str>, e: &'a Expr) {
+fn vars(v: &mut HashSet<String>, e: &Expr) {
     match e {
         Expr::Var { name, .. } => {
-            v.insert(name);
+            v.insert(name.clone());
         }
-        Expr::Func { args, .. } => args.iter().for_each(|i| vars(v, i)),
+        Expr::Func { args, .. } => args.iter().for_each(|i| vars(v, &i.borrow())),
     }
 }
 
-fn list(it: &[&str]) -> String {
+fn list(it: &[String]) -> String {
     let p = it[..it.len() - 1].join(", ");
     if it.len() > 1 {
         format!("{p}, and {}", it.last().unwrap())

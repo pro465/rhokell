@@ -1,4 +1,4 @@
-use std::{fmt::Display, rc::Rc};
+use std::{cell::RefCell, fmt::Display, rc::Rc};
 
 use crate::{
     error::{Error, Loc},
@@ -22,7 +22,9 @@ pub enum Expr {
     Func {
         loc: Loc,
         name: String,
-        args: Vec<Rc<Expr>>,
+        args: Vec<Rc<RefCell<Expr>>>,
+        // recordas whether this expression, along ith its subexpressions are reduced or not
+        reduced: bool,
     },
 }
 
@@ -63,7 +65,7 @@ impl Display for Expr {
                     write!(f, " ")?;
                 }
                 for (i, arg) in args.iter().enumerate() {
-                    write!(f, "{}", arg)?;
+                    write!(f, "{}", arg.borrow())?;
                     if i < args.len() - 1 {
                         write!(f, ", ")?;
                     }
@@ -111,8 +113,13 @@ impl<'a> Parser<'a> {
         let (loc, name) = self.sc.expect_identifier()?;
 
         if self.sc.is_identifier()? {
-            let args = vec![Rc::new(self.parse_expr::<false>()?)];
-            return Ok(Expr::Func { name, args, loc });
+            let args = vec![Rc::new(RefCell::new(self.parse_expr::<false>()?))];
+            return Ok(Expr::Func {
+                name,
+                args,
+                loc,
+                reduced: false,
+            });
         }
 
         if B {
@@ -124,14 +131,19 @@ impl<'a> Parser<'a> {
         if !self.sc.is_token(TokenTy::Rparen)? {
             loop {
                 let s = self.parse_expr::<false>()?;
-                args.push(Rc::new(s));
+                args.push(Rc::new(RefCell::new(s)));
                 if self.expect_commma_or(TokenTy::Rparen)? {
                     break;
                 }
             }
         }
 
-        Ok(Expr::Func { name, args, loc })
+        Ok(Expr::Func {
+            name,
+            args,
+            loc,
+            reduced: false,
+        })
     }
 
     fn expect_commma_or(&mut self, b: TokenTy) -> Result<bool, Error> {

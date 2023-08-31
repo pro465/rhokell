@@ -173,14 +173,10 @@ impl<'a> Scanner<'a> {
                     break;
                 }
             }
-            if c.is_alphabetic() {
-                Ok(Token {
-                    loc: self.loc(),
-                    ty: self.ident(i),
-                })
-            } else {
-                unreachable!()
-            }
+            Ok(Token {
+                loc: self.loc(),
+                ty: self.ident(i),
+            })
         }
     }
 
@@ -224,7 +220,7 @@ impl<'a> Scanner<'a> {
 }
 
 fn is_break(c: char) -> bool {
-    !c.is_uppercase() && !c.is_lowercase() && c != '_'
+    !c.is_alphanumeric() && c != '_'
 }
 
 fn list_of_token(l: &[TokenTy]) -> String {

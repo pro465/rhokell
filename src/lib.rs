@@ -1,4 +1,4 @@
-use error::{Error, ErrorTy, Loc};
+use error::{Error, ErrorTy};
 use parser::{Def, Expr, Func};
 use std::{
     collections::{HashMap, HashSet},

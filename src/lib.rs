@@ -30,7 +30,7 @@ pub fn parse_expr(src: String) -> Result<Expr, Error> {
 }
 
 pub fn apply(defs: &HashMap<String, Vec<Def>>, e: &mut Expr) -> bool {
-    stacker::maybe_grow(32 * 1024, 1024 * 1024, || {
+    with_stacker(|| {
         let mut changed = false;
 
         loop {
@@ -49,6 +49,10 @@ pub fn apply(defs: &HashMap<String, Vec<Def>>, e: &mut Expr) -> bool {
             }
         }
     })
+}
+
+pub fn with_stacker<R>(f: impl FnOnce() -> R) -> R {
+    stacker::maybe_grow(32 * 1024, 1024 * 1024, f)
 }
 
 fn mark_reduced(e: &mut Expr) {

@@ -58,7 +58,7 @@ impl PartialEq for Func {
 
 impl Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        stacker::maybe_grow(32 * 1024, 1024 * 1024, || match self {
+        crate::with_stacker(|| match self {
             Expr::RedFunc(fun) => {
                 let Func { name, args, .. } = &**fun;
                 write!(f, "{}", name)?;
@@ -97,6 +97,14 @@ impl Display for Expr {
                 Ok(())
             }
             Expr::Var { name, .. } => write!(f, "{}", name),
+        })
+    }
+}
+
+impl Drop for Func {
+    fn drop(&mut self) {
+        crate::with_stacker(|| {
+            self.args.clear();
         })
     }
 }

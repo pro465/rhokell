@@ -31,6 +31,7 @@ fn main() {
     };
 
     while let Some(mut line) = prompt("=>") {
+        println!("hello");
         if is_quit(&line) {
             break;
         }

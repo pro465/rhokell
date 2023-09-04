@@ -11,22 +11,20 @@ pub(crate) fn input(e: &mut Expr) {
 }
 
 fn encode(byte: Option<u8>) -> Expr {
-    let b = byte.map(u16::from).unwrap_or(256);
-    let mut src = format!(
-        "Cons({}, Cons({}, Cons({}, Cons({}, Cons({}, Cons({}, Cons({}, Cons({}, Nil()))))))))",
-        enc(b >> 7),
-        enc(b >> 6),
-        enc(b >> 5),
-        enc(b >> 4),
-        enc(b >> 3),
-        enc(b >> 2),
-        enc(b >> 1),
-        enc(b >> 0),
-    );
-
-    if byte.is_none() {
-        src = format!("Cons(T(), {})", src);
-    }
+    let src = byte.map_or("Eof()".into(), |b| {
+        let enc = |idx| ["F", "T"][(b >> idx) as usize & 1];
+        format!(
+            "{} {} {} {} {} {} {} {}()",
+            enc(7),
+            enc(6),
+            enc(5),
+            enc(4),
+            enc(3),
+            enc(2),
+            enc(1),
+            enc(0),
+        )
+    });
 
     crate::parse_expr(src).unwrap_or_else(|e| {
         e.report();
@@ -51,29 +49,26 @@ pub(crate) fn output(e: &mut Expr) {
     }
 }
 
-fn enc(bit: u16) -> &'static str {
-    if bit & 1 == 1 {
-        "T()"
-    } else {
-        "F()"
-    }
-}
-
 fn decode(res: u8, idx: u8, e: &Expr) -> u8 {
     if idx == 0 {
         return res;
     }
     match e {
-        Expr::RedFunc(f) if f.name == "Cons" && f.args.len() == 2 => {
-            decode(res | (dec(&f.args[0]) << idx - 1), idx - 1, &f.args[1])
+        Expr::RedFunc(f) if f.name == "T" => {
+            let res = res | (1 << idx - 1);
+            if let Some(x) = f.args.get(0) {
+                decode(res, idx - 1, x)
+            } else {
+                res >> idx - 1
+            }
         }
-        _ => res,
-    }
-}
-
-fn dec(x: &Expr) -> u8 {
-    match x {
-        Expr::RedFunc(f) if f.name == "F" => 0,
-        _ => 1,
+        Expr::RedFunc(f) if f.name == "F" => {
+            if let Some(x) = f.args.get(0) {
+                decode(res, idx - 1, x)
+            } else {
+                res >> idx - 1
+            }
+        }
+        _ => res >> idx - 1,
     }
 }

@@ -1,4 +1,8 @@
 # smallfuck interpreter
+# if you are using it directly:
+# just input your smallfuck pprogram using standard input.
+#
+# or, if you are using the REPL:
 # give it an expression of the syntax smf(prog, mem)
 # where prog is the program, mem is the initial memory
 # both are cons lists consisting of Cons(a, l) and Nil().
@@ -33,7 +37,22 @@
 #      )
 # 
 
-smf(prog, mem) = output(eval(prep(prog, Nil()), mem, Nil()));
+main() = encode(smf(decode(input(), Nil()), Nil()));
+
+decode(Cons(T(), Cons(F(), Cons(F(), Cons(F(), Cons(F(), Cons(F(), Cons(F(), Cons(F(), Cons(F(), Nil()))))))))), res) = res;
+decode(Cons(F(), Cons(F(), Cons(T(), Cons(F(), Cons(T(), Cons(F(), Cons(T(), Cons(F(), Nil())))))))), res) = decode(input(), append(res, Cons(Flip(), Nil())));
+decode(Cons(F(), Cons(F(), Cons(T(), Cons(T(), Cons(T(), Cons(T(), Cons(F(), Cons(F(), Nil())))))))), res) = decode(input(), append(res, Cons(Left(), Nil())));
+decode(Cons(F(), Cons(F(), Cons(T(), Cons(T(), Cons(T(), Cons(T(), Cons(T(), Cons(F(), Nil())))))))), res) = decode(input(), append(res, Cons(Right(), Nil())));
+decode(Cons(F(), Cons(T(), Cons(F(), Cons(T(), Cons(T(), Cons(F(), Cons(T(), Cons(T(), Nil())))))))), res) = decode(input(), append(res, Cons(LBrace(), Nil())));
+decode(Cons(F(), Cons(T(), Cons(F(), Cons(T(), Cons(T(), Cons(T(), Cons(F(), Cons(T(), Nil())))))))), res) = decode(input(), append(res, Cons(RBrace(), Nil())));
+decode(x, res) = decode(input(), res);
+
+encode(Nil()) = Nil();
+encode(Cons(b, res)) = then(output(Cons(F(), Cons(F(), Cons(T(), Cons(T(), Cons(F(), Cons(F(), Cons(F(), Cons(b, Nil()))))))))), encode(res));
+
+then(a, b) = b;
+
+smf(prog, mem) = serialize_pair(eval(prep(prog, Nil()), mem, Nil()));
 
 # change .. [<code>] .. to .. While(<code>) ..
 prep(Nil(), x) = x;
@@ -63,7 +82,7 @@ loop(b, Cons(T(), mem), lmem, rem) = destruct(b, eval(b, Cons(T(), mem), lmem), 
 
 destruct(b, Pair(lmem, rmem), rem) = loop(b, rmem, lmem, rem);
 
-output(Pair(l, r)) = append(reverse(l), r);
+serialize_pair(Pair(l, r)) = append(reverse(l), r);
 
 # adds one list to the end of the other list
 append(Nil(), x) = x;

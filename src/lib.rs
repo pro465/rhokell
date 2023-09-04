@@ -6,11 +6,14 @@ use std::{
 };
 
 mod error;
+mod io;
 mod parser;
 mod token;
 mod unify;
 
-pub fn parse(src: String) -> Result<HashMap<String, Vec<Def>>, Error> {
+pub type Rules = HashMap<String, Vec<Def>>;
+
+pub fn parse(src: String) -> Result<Rules, Error> {
     let scanner = token::Scanner::new(&src);
     let mut parser = parser::Parser::new(scanner);
     let mut defs: HashMap<_, Vec<Def>> = HashMap::new();
@@ -29,17 +32,22 @@ pub fn parse_expr(src: String) -> Result<Expr, Error> {
     Ok(e)
 }
 
-pub fn apply(defs: &HashMap<String, Vec<Def>>, e: &mut Expr) -> bool {
+pub fn apply(defs: &Rules, e: &mut Expr) -> bool {
     with_stacker(|| {
         let mut changed = false;
 
         loop {
-            match &mut *e {
+            match e {
                 Expr::Func(Func { name, args, .. }) => {
                     for a in args.iter_mut() {
                         changed |= apply(defs, a);
                     }
-                    if !defs.contains_key(name) || !defs[name].iter().any(|def| def.apply(e)) {
+                    if name == "input" {
+                        io::input(e);
+                    } else if name == "output" {
+                        io::output(e);
+                    } else if !defs.contains_key(name) || !defs[name].iter().any(|def| def.apply(e))
+                    {
                         mark_reduced(e);
                         break changed;
                     }
@@ -50,7 +58,6 @@ pub fn apply(defs: &HashMap<String, Vec<Def>>, e: &mut Expr) -> bool {
         }
     })
 }
-
 pub fn with_stacker<R>(f: impl FnOnce() -> R) -> R {
     stacker::maybe_grow(32 * 1024, 1024 * 1024, f)
 }

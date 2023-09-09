@@ -40,15 +40,16 @@
 main() = encode(smf(decode(input(), Nil()), Nil()));
 
 decode(Eof(), res) = res;
-decode(F F T F T F T F(), res) = decode(input(), append(res, Cons(Flip(), Nil())));
-decode(F F T T T T F F(), res) = decode(input(), append(res, Cons(Left(), Nil())));
-decode(F F T T T T T F(), res) = decode(input(), append(res, Cons(Right(), Nil())));
-decode(F T F T T F T T(), res) = decode(input(), append(res, Cons(LBrace(), Nil())));
-decode(F T F T T T F T(), res) = decode(input(), append(res, Cons(RBrace(), Nil())));
+decode(2A(), res) = decode(input(), append(res, Cons(Flip(), Nil())));
+decode(3C(), res) = decode(input(), append(res, Cons(Left(), Nil())));
+decode(3E(), res) = decode(input(), append(res, Cons(Right(), Nil())));
+decode(5B(), res) = decode(input(), append(res, Cons(LBrace(), Nil())));
+decode(5D(), res) = decode(input(), append(res, Cons(RBrace(), Nil())));
 decode(x, res) = decode(input(), res);
 
 encode(Nil()) = Nil();
-encode(Cons(b, res)) = then(output(F F T T F F F b, encode(res)));
+encode(Cons(F(), res)) = then(output(30()), encode(res));
+encode(Cons(T(), res)) = then(output(31()), encode(res));
 
 then(a, b) = b;
 

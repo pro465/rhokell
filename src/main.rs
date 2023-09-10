@@ -25,7 +25,7 @@ fn main() {
     if is_repl {
         repl(&rules);
     } else {
-        let mut expr = rhokell::parse_expr("main()".into()).unwrap();
+        let mut expr = rhokell::parse_expr("(main)".into()).unwrap();
         rhokell::apply(&rules, &mut expr);
     }
 }

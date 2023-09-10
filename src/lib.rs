@@ -1,5 +1,5 @@
 use error::{Error, ErrorTy};
-use parser::{Def, Expr, Func};
+use parser::{App, Def, Expr};
 use std::{
     collections::{HashMap, HashSet},
     rc::Rc,
@@ -27,7 +27,7 @@ pub fn parse(src: String) -> Result<Rules, Error> {
 pub fn parse_expr(src: String) -> Result<Expr, Error> {
     let scanner = token::Scanner::new(&src);
     let mut parser = parser::Parser::new(scanner);
-    let e = parser.parse_expr::<false>()?;
+    let (.., e) = parser.parse_expr(false)?;
     parser.sc.expect_token(token::TokenTy::Eof)?;
     Ok(e)
 }
@@ -38,19 +38,28 @@ pub fn apply(defs: &Rules, e: &mut Expr) -> bool {
 
         loop {
             match e {
-                Expr::Func(Func { name, args, .. }) => {
-                    for a in args.iter_mut() {
-                        changed |= apply(defs, a);
-                    }
-                    if name == "input" {
-                        io::input(e);
-                    } else if name == "output" {
+                Expr::App(f) => {
+                    changed |= apply(defs, &mut f.f);
+                    changed |= apply(defs, &mut f.arg);
+                    if is_io(&f.f) {
                         io::output(e);
-                    } else if !defs.contains_key(name) || !defs[name].iter().any(|def| def.apply(e))
+                    } else if !defs.contains_key(&**f.name)
+                        || !defs[&**f.name].iter().any(|def| def.apply(e))
                     {
                         mark_reduced(e);
                         break changed;
                     }
+                    changed = true;
+                }
+                Expr::Fun { name, .. } => {
+                    if name == "input" {
+                        io::input(e);
+                    } else if !defs.contains_key(&*name)
+                        || !defs[&*name].iter().any(|def| def.apply(e))
+                    {
+                        break changed;
+                    }
+
                     changed = true;
                 }
                 _ => break changed,
@@ -58,13 +67,21 @@ pub fn apply(defs: &Rules, e: &mut Expr) -> bool {
         }
     })
 }
+
+fn is_io(f: &Expr) -> bool {
+    match f {
+        Expr::Fun { name, .. } => name == "output",
+        _ => false,
+    }
+}
+
 pub fn with_stacker<R>(f: impl FnOnce() -> R) -> R {
     stacker::maybe_grow(32 * 1024, 1024 * 1024, f)
 }
 
 fn mark_reduced(e: &mut Expr) {
-    if let Expr::Func(f) = e {
-        *e = Expr::RedFunc(Rc::new(std::mem::take(f)))
+    if let Expr::App(f) = e {
+        *e = Expr::RedApp(Rc::new(std::mem::take(f)))
     }
 }
 
@@ -78,7 +95,7 @@ fn check_closed(def: &Def) -> Result<(), Error> {
         Err(Error {
             loc: def.rep.loc(),
             ty: ErrorTy::CExprError,
-            desc: format!("undefined varables: {}", list(&undefined)),
+            desc: format!("undefined variables: {}", list(&undefined)),
         })
     } else {
         Ok(())
@@ -90,9 +107,18 @@ fn vars(v: &mut HashSet<String>, e: &Expr) {
         Expr::Var { name, .. } => {
             v.insert(name.clone());
         }
-        Expr::Func(Func { args, .. }) => args.iter().for_each(|i| vars(v, &i)),
 
-        Expr::RedFunc(f) => f.args.iter().for_each(|i| vars(v, &i)),
+        Expr::App(a) => {
+            vars(v, &a.f);
+            vars(v, &a.arg);
+        }
+
+        Expr::RedApp(a) => {
+            vars(v, &a.f);
+            vars(v, &a.arg);
+        }
+
+        Expr::Fun { .. } => {}
     }
 }
 

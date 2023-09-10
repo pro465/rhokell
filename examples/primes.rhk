@@ -1,26 +1,26 @@
 # input: a big-endian binary number n.
 # output: a list of boolean values corresponding to 
 # whether the number at the postion is prime starting from 2 till n + 1.
-# example: primes T F T F()
+# example: (primes (T (F (T (F)))))
 
-primes n = sieve_of_Ἐρατοσθένης(init_list(n, Nil()), S S Z());
+(primes n) = (sieve_of_Ἐρατοσθένης (init_list n (Nil)) (S (S (Z))));
 
-init_list(F(), res) = double res;
-init_list(T(), res) = Cons(T(), double res);
-init_list(F x, res) = init_list(x, double res);
-init_list(T x, res) = init_list(x, Cons(T(), double res));
+(init_list (F) res) = (double res);
+(init_list (T) res) = (Cons (T) (double res));
+(init_list (F x) res) = (init_list x (double res));
+(init_list (T x) res) = (init_list x (Cons (T) (double res)));
 
-double Nil() = Nil();
-double Cons(x, y) = Cons(x, Cons(x, double y));
+(double (Nil)) = (Nil);
+(double (Cons x y)) = (Cons x (Cons x (double y)));
 
-sieve_of_Ἐρατοσθένης(Nil(), curr_pos) = Nil();
-sieve_of_Ἐρατοσθένης(Cons(F(), rem), curr_pos) = Cons(F(), sieve_of_Ἐρατοσθένης(rem, S curr_pos));
-sieve_of_Ἐρατοσθένης(Cons(T(), rem), curr_pos) = Cons(T(), sieve_of_Ἐρατοσθένης(mark_multiples(rem, curr_pos, curr_pos), S curr_pos));
+(sieve_of_Ἐρατοσθένης (Nil) curr_pos) = (Nil);
+(sieve_of_Ἐρατοσθένης (Cons (F) rem) curr_pos) = (Cons (F) (sieve_of_Ἐρατοσθένης rem (S curr_pos)));
+(sieve_of_Ἐρατοσθένης (Cons (T) rem) curr_pos) = (Cons (T) (sieve_of_Ἐρατοσθένης (mark_multiples rem curr_pos curr_pos) (S curr_pos)));
 
 # this is starting from m*p+1 for some p,
 # since the distance to the next multiple, (m+1)*p, 
 # is (m+1)*p - (m*p+1) = p - 1, so we adjust accordingly
 
-mark_multiples(Nil(), x, y) = Nil();
-mark_multiples(Cons(a, b), init, S Z()) = Cons(F(), mark_multiples(b, init, init));
-mark_multiples(Cons(a, b), init, S rem) = Cons(a, mark_multiples(b, init, rem));
+(mark_multiples (Nil) x y) = (Nil);
+(mark_multiples (Cons a b) init (S (Z))) = (Cons (F) (mark_multiples b init init));
+(mark_multiples (Cons a b) init (S rem)) = (Cons a (mark_multiples b init rem));

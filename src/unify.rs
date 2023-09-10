@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
-use crate::{Def, Expr, Func};
+use crate::{App, Def, Expr};
+
 impl Def {
     pub fn apply(&self, e: &mut Expr) -> bool {
         let mut bindings = HashMap::new();
@@ -23,26 +24,14 @@ fn unify<'a>(b: &mut HashMap<&'a str, &'a Expr>, pat: &'a Expr, e: &'a Expr) -> 
                 true
             }
         }
-        (Expr::Func(f1), Expr::Func(f2))
-            if f1.name == f2.name && f1.args.len() == f2.args.len() =>
-        {
-            for (p, e) in f1.args.iter().zip(f2.args.iter()) {
-                if !unify(b, p, e) {
-                    return false;
-                }
-            }
-            true
+        (Expr::App(f1), Expr::App(f2)) if f1.name == f2.name => {
+            unify(b, &f1.f, &f2.f) && unify(b, &f1.arg, &f2.arg)
         }
-        (Expr::Func(f1), Expr::RedFunc(f2))
-            if f1.name == f2.name && f1.args.len() == f2.args.len() =>
-        {
-            for (p, e) in f1.args.iter().zip(f2.args.iter()) {
-                if !unify(b, p, e) {
-                    return false;
-                }
-            }
-            true
+        (Expr::App(f1), Expr::RedApp(f2)) if f1.name == f2.name => {
+            unify(b, &f1.f, &f2.f) && unify(b, &f1.arg, &f2.arg)
         }
+
+        (Expr::Fun { name, .. }, Expr::Fun { name: name2, .. }) => name == name2,
         _ => false,
     }
 }
@@ -50,11 +39,25 @@ fn unify<'a>(b: &mut HashMap<&'a str, &'a Expr>, pat: &'a Expr, e: &'a Expr) -> 
 fn substitute(b: &HashMap<&str, &Expr>, rep: &Expr) -> Expr {
     match rep {
         Expr::Var { name, .. } => b[&name[..]].clone(),
-        Expr::Func(f) => Expr::Func(Func {
-            loc: f.loc,
-            name: f.name.clone(),
-            args: f.args.iter().map(|e| substitute(b, &e)).collect(),
-        }),
+        Expr::Fun { name, .. } if b.contains_key(&**name) => b[&name[..]].clone(),
+        Expr::App(f) => {
+            let res = substitute(b, &f.f);
+            Expr::App(Box::new(App {
+                name: get_name(&res),
+                f: res,
+                loc: f.loc,
+                arg: substitute(b, &f.arg),
+            }))
+        }
+        Expr::Fun { .. } => rep.clone(),
         _ => unreachable!(),
+    }
+}
+
+fn get_name(a: &Expr) -> Rc<String> {
+    match a {
+        Expr::Var { name, .. } | Expr::Fun { name, .. } => Rc::new(name.clone()),
+        Expr::App(f) => f.name.clone(),
+        Expr::RedApp(f) => f.name.clone(),
     }
 }

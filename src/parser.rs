@@ -1,7 +1,7 @@
 use std::{fmt::Display, rc::Rc};
 
 use crate::{
-    error::{Error, Loc},
+    error::{Error, ErrorTy, Loc},
     token::{Scanner, TokenTy},
 };
 
@@ -15,26 +15,37 @@ pub struct Def {
 
 #[derive(Clone, Debug)]
 pub enum Expr {
+    Fun { name: String, loc: Loc },
     Var { name: String, loc: Loc },
     // reduced function
-    RedFunc(Rc<Func>),
+    RedApp(Rc<App>),
     // unreduced function
-    Func(Func),
+    App(Box<App>),
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Func {
+pub struct App {
+    pub(crate) name: Rc<String>,
     pub(crate) loc: Loc,
-    pub(crate) name: String,
-    pub(crate) args: Vec<Expr>,
+    pub(crate) f: Expr,
+    pub(crate) arg: Expr,
 }
 
 impl Expr {
     pub(crate) fn loc(&self) -> Loc {
         match self {
-            Expr::Var { loc, .. } => *loc,
-            Expr::Func(Func { loc, .. }) => *loc,
-            Expr::RedFunc(f) => f.loc,
+            Expr::Var { loc, .. } | Expr::Fun { loc, .. } => *loc,
+            Expr::App(f) => f.loc,
+            Expr::RedApp(f) => f.loc,
+        }
+    }
+}
+
+impl Default for Expr {
+    fn default() -> Self {
+        Expr::Var {
+            name: String::default(),
+            loc: Loc::default(),
         }
     }
 }
@@ -43,68 +54,43 @@ impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Expr::Var { name, .. }, Expr::Var { name: name2, .. }) => name == name2,
-            (Expr::RedFunc(f1), Expr::RedFunc(f2)) => f1 == f2,
-            (Expr::Func(f1), Expr::Func(f2)) => f1 == f2,
+            (Expr::Fun { name, .. }, Expr::Fun { name: name2, .. }) => name == name2,
+            (Expr::RedApp(f1), Expr::RedApp(f2)) => f1 == f2,
+            (Expr::App(f1), Expr::App(f2)) => f1 == f2,
             _ => false,
         }
     }
 }
 
-impl PartialEq for Func {
+impl PartialEq for App {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.args == other.args
+        self.f == other.f && self.arg == other.arg
     }
 }
 
 impl Display for Expr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         crate::with_stacker(|| match self {
-            Expr::RedFunc(fun) => {
-                let Func { name, args, .. } = &**fun;
-                write!(f, "{}", name)?;
-                if args.len() != 1 {
-                    write!(f, "(")?;
-                } else {
-                    write!(f, " ")?;
-                }
-                for (i, arg) in args.iter().enumerate() {
-                    write!(f, "{}", &arg)?;
-                    if i < args.len() - 1 {
-                        write!(f, ", ")?;
-                    }
-                }
-                if args.len() != 1 {
-                    write!(f, ")")?;
-                }
-                Ok(())
+            Expr::RedApp(fun) => {
+                let App { f, arg, .. } = &**fun;
+                write!(fmt, "({} {})", f, arg)
             }
-            Expr::Func(Func { name, args, .. }) => {
-                write!(f, "{}", name)?;
-                if args.len() != 1 {
-                    write!(f, "(")?;
-                } else {
-                    write!(f, " ")?;
-                }
-                for (i, arg) in args.iter().enumerate() {
-                    write!(f, "{}", &arg)?;
-                    if i < args.len() - 1 {
-                        write!(f, ", ")?;
-                    }
-                }
-                if args.len() != 1 {
-                    write!(f, ")")?;
-                }
-                Ok(())
+            Expr::App(fun) => {
+                let App { f, arg, .. } = &**fun;
+                write!(fmt, "({} {})", f, arg)
             }
-            Expr::Var { name, .. } => write!(f, "{}", name),
+            Expr::Var { name, .. } => write!(fmt, "{}", name),
+            Expr::Fun { name, .. } => write!(fmt, "({})", name),
         })
     }
 }
 
-impl Drop for Func {
+impl Drop for App {
     fn drop(&mut self) {
+        use std::mem::take;
         crate::with_stacker(|| {
-            self.args.clear();
+            take(&mut self.f);
+            take(&mut self.arg);
         })
     }
 }
@@ -121,13 +107,17 @@ impl<'a> Parser<'a> {
         if self.sc.peek()?.ty() == TokenTy::Eof {
             return Ok(None);
         }
-        let pat = self.parse_expr::<true>()?;
-        let (name, loc) = match &pat {
-            Expr::Func(f) => (f.name.clone(), f.loc),
-            _ => unreachable!(),
-        };
+        let (name, loc, pat) = self.parse_expr(false)?;
+        if let Expr::Var { .. } = pat {
+            return Err(Error {
+                loc,
+                ty: ErrorTy::SyntaxError,
+                desc: "bare variables are not allowed".into(),
+            });
+        }
+        let name = (&*name).clone();
         self.sc.expect_token(TokenTy::Equal)?;
-        let rep = self.parse_expr::<false>()?;
+        let (_, _, rep) = self.parse_expr(false)?;
         self.sc.expect_token(TokenTy::Semi)?;
 
         Ok(Some(Def {
@@ -138,42 +128,31 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    pub fn parse_expr<const B: bool>(&mut self) -> Result<Expr, Error> {
-        let (loc, name) = self.sc.expect_identifier()?;
+    pub fn parse_expr(&mut self, is_func: bool) -> Result<(Rc<String>, Loc, Expr), Error> {
+        if !self.sc.is_token(TokenTy::Lparen)? {
+            let (loc, name) = self.sc.expect_identifier()?;
+            return Ok((
+                Rc::new(name.clone()),
+                loc,
+                if is_func {
+                    Expr::Fun { name, loc }
+                } else {
+                    Expr::Var { name, loc }
+                },
+            ));
+        }
+        let (name, loc, mut res) = self.parse_expr(true)?;
 
-        if self.sc.is_identifier()? {
-            let args = vec![self.parse_expr::<false>()?];
-            return Ok(Expr::Func(Func { name, args, loc }));
+        while !self.sc.is_token(TokenTy::Rparen)? {
+            let (_, _, arg) = self.parse_expr(false)?;
+            res = Expr::App(Box::new(App {
+                name: name.clone(),
+                f: res,
+                loc,
+                arg,
+            }))
         }
 
-        if B {
-            self.sc.expect_token(TokenTy::Lparen)?;
-        } else if !self.sc.is_token(TokenTy::Lparen)? {
-            return Ok(Expr::Var { name, loc });
-        }
-        let mut args = Vec::new();
-        if !self.sc.is_token(TokenTy::Rparen)? {
-            loop {
-                let s = self.parse_expr::<false>()?;
-                args.push(s);
-                if self.expect_commma_or(TokenTy::Rparen)? {
-                    break;
-                }
-            }
-        }
-
-        Ok(Expr::Func(Func { name, args, loc }))
-    }
-
-    fn expect_commma_or(&mut self, b: TokenTy) -> Result<bool, Error> {
-        let mut res = self.sc.expect_one(&[TokenTy::Comma, b.clone()])?.ty();
-        if res == TokenTy::Comma {
-            res = self.sc.peek()?.ty();
-            if res == b {
-                self.sc.expect_token(b.clone())?;
-            }
-        }
-
-        Ok(res == b)
+        Ok((name, loc, res))
     }
 }

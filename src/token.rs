@@ -73,24 +73,6 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn is_identifier(&mut self) -> Result<bool, Error> {
-        let tok = self.peek()?;
-        Ok(matches!(tok.ty, TokenTy::Ident(_)))
-    }
-
-    pub fn expect_one(&mut self, t: &[TokenTy]) -> Result<Token, Error> {
-        let res = self.next_token()?;
-        if !t.contains(&res.ty) {
-            Err(Error {
-                loc: res.loc,
-                ty: ErrorTy::SyntaxError,
-                desc: format!("expected one of {}, found {}", list_of_token(t), res.ty),
-            })
-        } else {
-            Ok(res)
-        }
-    }
-
     pub fn expect_token(&mut self, token: TokenTy) -> Result<Token, Error> {
         let res = self.next_token()?;
         if res.ty != token {
@@ -218,14 +200,4 @@ impl<'a> Scanner<'a> {
 
 fn is_break(c: char) -> bool {
     !c.is_alphanumeric() && c != '_'
-}
-
-fn list_of_token(l: &[TokenTy]) -> String {
-    l[..l.len() - 1]
-        .iter()
-        .map(ToString::to_string)
-        .reduce(|a, b| a + ", " + &b)
-        .unwrap()
-        + " or "
-        + &l.last().unwrap().to_string()
 }

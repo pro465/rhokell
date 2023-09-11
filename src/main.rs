@@ -31,7 +31,7 @@ fn main() {
 }
 
 fn repl(rules: &Rules) {
-    println!("welcome to rhokell v0.1.0!\ninput `q`, `quit`, or `exit` for exiting the REPL");
+    println!("welcome to rhokell v0.2.0!\ninput `q`, `quit`, or `exit` for exiting the REPL");
 
     let mut lines = std::io::stdin()
         .lines()

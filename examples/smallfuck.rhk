@@ -40,16 +40,16 @@
 (main) = (encode (smf (decode (input) (Nil)) (Nil)));
 
 (decode (Eof) res) = res;
-(decode (2A) res) = (decode (input) (append res (Cons (Flip) (Nil))));
-(decode (3C) res) = (decode (input) (append res (Cons (Left) (Nil))));
-(decode (3E) res) = (decode (input) (append res (Cons (Right) (Nil))));
-(decode (5B) res) = (decode (input) (append res (Cons (LBrace) (Nil))));
-(decode (5D) res) = (decode (input) (append res (Cons (RBrace) (Nil))));
+(decode (2 (A)) res) = (decode (input) (append res (Cons (Flip) (Nil))));
+(decode (3 (C)) res) = (decode (input) (append res (Cons (Left) (Nil))));
+(decode (3 (E)) res) = (decode (input) (append res (Cons (Right) (Nil))));
+(decode (5 (B)) res) = (decode (input) (append res (Cons (LBrace) (Nil))));
+(decode (5 (D)) res) = (decode (input) (append res (Cons (RBrace) (Nil))));
 (decode x res) = (decode (input) res);
 
 (encode (Nil)) = (Nil);
-(encode (Cons (F) res)) = (then (output (30)) (encode res));
-(encode (Cons (T) res)) = (then (output (31)) (encode res));
+(encode (Cons (F) res)) = (then (output (3 (0))) (encode res));
+(encode (Cons (T) res)) = (then (output (3 (1))) (encode res));
 
 (then a b) = b;
 

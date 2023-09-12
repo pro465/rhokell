@@ -1,44 +1,53 @@
 (main) = (print_data (tr (input)) (z));
 
-(tr (byte a b)) = (cons a b (tr (input)));
-(tr (EOF)) = (nil);
+(tr (byte a b)) = (c a b (tr (input)));
+(tr (EOF)) = (n);
 
 (print_data x (s (s (s (s (s (s (s (z))))))))) = 
     (do 
-        (output (byte (0) (A)))
+        (o (0) (A))
         (print_data x (z))
-        (output (byte (0) (A)))
+        (o (0) (A))
     );
-(print_data (cons a b c) d) = 
+(print_data (c w x y) z) = 
     (do
-      (print_cons)
-      (output (space))
-      (output (lparen))
-      (print_hex a)
-      (output (rparen))
-      (output (space))
-      (output (lparen))
-      (print_hex b)
-      (output (rparen))
-      (output (space))
-      (print_data c (s d))
-      (output (rparen))
+      (print_c)
+      (o (space))
+      (o (lparen))
+      (print_hex w)
+      (o (rparen))
+      (o (space))
+      (o (lparen))
+      (print_hex x)
+      (o (rparen))
+      (o (space))
+      (print_data y (s z))
+      (o (rparen))
     );
-(print_data (nil)) = (print_nil);
+(print_data (n)) = (print_n);
 
-(print_cons) = (output (lparen) (byte (6) (3)) (byte (6) (F)) (byte (6) (E)) (byte (7) (3)));
-(print_nil) = (output (lparen) (byte (6) (E)) (byte (6) (9)) (byte (6) (C)) (rparen));
+(print_code (c x y z)) = 
+    (do
+        (o x y)
+        (print_code z)
+    );
 
-(space) = (byte (2) (0));
-(lparen) = (byte (2) (8));
-(rparen) = (byte (2) (9));
+(print_c) = (o (lparen) (6) (3));
+(print_n) = (o (lparen) (6) (E) (rparen));
 
-(print_hex (A)) = (output (byte (4) (1)));
-(print_hex (B)) = (output (byte (4) (2)));
-(print_hex (C)) = (output (byte (4) (3)));
-(print_hex (D)) = (output (byte (4) (4)));
-(print_hex (E)) = (output (byte (4) (5)));
-(print_hex (F)) = (output (byte (4) (6)));
-(print_hex d) = (output (byte (3) d));
+(space) = (b (2) (0));
+(lparen) = (b (2) (8));
+(rparen) = (b (2) (9));
 
+(print_hex (A)) = (o (4) (1));
+(print_hex (B)) = (o (4) (2));
+(print_hex (C)) = (o (4) (3));
+(print_hex (D)) = (o (4) (4));
+(print_hex (E)) = (o (4) (5));
+(print_hex (F)) = (o (4) (6));
+(print_hex d) = (o (3) d);
+
+(o (b x y)) = (o x y);
+(o x y) = (then (output (byte x y)) (o));
+(then a b) = b;
 (do a) = (do);

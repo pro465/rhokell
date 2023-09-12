@@ -1,0 +1,37 @@
+(main) = (print_data (tr (input)));
+(tr (byte a b)) = (cons a b (tr (input)));
+(tr (EOF)) = (nil);
+
+(print_data (cons a b c)) = 
+    (do
+      (print_cons)
+      (output (space))
+      (output (lparen))
+      (print_hex a)
+      (output (rparen))
+      (output (space))
+      (output (lparen))
+      (print_hex b)
+      (output (rparen))
+      (output (space))
+      (print_data c)
+      (output (rparen))
+    );
+(print_data (nil)) = (print_nil);
+
+(print_cons) = (output (lparen) (byte (6) (3)) (byte (6) (F)) (byte (6) (E)) (byte (7) (3)));
+(print_nil) = (output (lparen) (byte (6) (E)) (byte (6) (9)) (byte (6) (C)) (rparen));
+
+(space) = (byte (2) (0));
+(lparen) = (byte (2) (8));
+(rparen) = (byte (2) (9));
+
+(print_hex (A)) = (output (byte (4) (1)));
+(print_hex (B)) = (output (byte (4) (2)));
+(print_hex (C)) = (output (byte (4) (3)));
+(print_hex (D)) = (output (byte (4) (4)));
+(print_hex (E)) = (output (byte (4) (5)));
+(print_hex (F)) = (output (byte (4) (6)));
+(print_hex d) = (output (byte (3) d));
+
+(do a) = (do);

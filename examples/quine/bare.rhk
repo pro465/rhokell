@@ -31,7 +31,7 @@
         (o (space))
         (print_data y (s z) (mod v))
         (o (rparen))
-        (if (mod y))
+        (if (mod v))
     );
 (print_data (n)) = (print_n);
 

@@ -9,12 +9,18 @@ use crate::{
     parser::{App, Expr},
 };
 
+type CExpr = (Expr, Rc<String>);
+
 pub(crate) fn input(e: &mut Expr) {
     let curr = std::io::stdin().bytes().next().transpose().unwrap();
-    // (high (low))
-    let src = curr.map_or(fun("Eof".into(), e.loc()), |b| {
+    // (byte high low)
+    let src = curr.map_or(fun("EOF".into(), e.loc()), |b| {
         app(
-            fun(format!("{:X}", b >> 4), e.loc()),
+            app(
+                fun("byte".into(), e.loc()),
+                fun(format!("{:X}", b >> 4), e.loc()),
+                e.loc(),
+            ),
             fun(format!("{:X}", b & 15), e.loc()),
             e.loc(),
         )
@@ -24,7 +30,7 @@ pub(crate) fn input(e: &mut Expr) {
 
 pub(crate) fn output(e: &mut Expr) {
     if let Expr::App(f) = e {
-        let b = decode(&f.arg, 4).unwrap_or(0);
+        let b = decode(&f.arg).unwrap_or(0);
         let mut stdout = io::stdout();
         stdout.write_all(&[b]).unwrap();
         stdout.flush().unwrap();
@@ -32,7 +38,7 @@ pub(crate) fn output(e: &mut Expr) {
     }
 }
 
-fn app(f: (Expr, Rc<String>), arg: (Expr, Rc<String>), loc: Loc) -> (Expr, Rc<String>) {
+fn app(f: CExpr, arg: CExpr, loc: Loc) -> CExpr {
     (
         Expr::App(Box::new(App {
             name: f.1.clone(),
@@ -44,21 +50,24 @@ fn app(f: (Expr, Rc<String>), arg: (Expr, Rc<String>), loc: Loc) -> (Expr, Rc<St
     )
 }
 
-fn fun(name: String, loc: Loc) -> (Expr, Rc<String>) {
+fn fun(name: String, loc: Loc) -> CExpr {
     let n2 = name.clone();
     (Expr::Fun { name, loc }, Rc::new(n2))
 }
 
-fn decode(e: &Expr, idx: u8) -> Result<u8, ParseIntError> {
+fn decode(e: &Expr) -> Result<u8, ParseIntError> {
+    match e {
+        Expr::RedApp(f) if &*f.name == "byte" => match &f.f {
+            Expr::RedApp(f2) => Ok(decode_hex(&f2.arg)? << 4 | decode_hex(&f.arg)? & 15),
+            _ => u8::from_str_radix("", 16),
+        },
+        _ => u8::from_str_radix("", 16),
+    }
+}
+
+fn decode_hex(e: &Expr) -> Result<u8, ParseIntError> {
     match e {
         Expr::Fun { name, .. } => u8::from_str_radix(&name, 16),
-        Expr::RedApp(f) => u8::from_str_radix(&f.name, 16).and_then(|x| {
-            Ok(if idx == 0 {
-                x
-            } else {
-                (x << idx) | decode(&f.arg, 0)?
-            })
-        }),
         _ => u8::from_str_radix("", 16),
     }
 }

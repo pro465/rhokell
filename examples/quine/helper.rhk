@@ -1,30 +1,36 @@
-(main) = (print_data (tr (input)) (z));
+(main) = (print_data (tr (input)) (z) (z));
 
 (tr (byte a b)) = (c a b (tr (input)));
 (tr (EOF)) = (n);
 
-(print_data x (s (s (s (s (s (s (s (z))))))))) = 
+(print_data x (s (s (s (s (s (s (s (z)))))))) y) = 
     (do 
         (o (0) (A))
-        (print_data x (z))
-        (o (0) (A))
+        (print_data x (z) (mod y))
+        (if (mod y))
     );
-(print_data (c w x y) z) = 
+(print_data (c w x y) z v) = 
     (do
-      (print_c)
-      (o (space))
-      (o (lparen))
-      (print_hex w)
-      (o (rparen))
-      (o (space))
-      (o (lparen))
-      (print_hex x)
-      (o (rparen))
-      (o (space))
-      (print_data y (s z))
-      (o (rparen))
+        (print_c)
+        (o (space))
+        (o (lparen))
+        (print_hex w)
+        (o (rparen))
+        (o (space))
+        (o (lparen))
+        (print_hex x)
+        (o (rparen))
+        (o (space))
+        (print_data y (s z) (mod v))
+        (o (rparen))
+        (if (mod y))
     );
 (print_data (n)) = (print_n);
+
+(mod (s (s (s (s (s (s (s (s (s (s (s (s (z)))))))))))))) = (z);
+(mod x) = (s x);
+
+(if (z)) = (o (0) (A));
 
 (print_code (c x y z)) = 
     (do

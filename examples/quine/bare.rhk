@@ -14,8 +14,7 @@
 (print_data x (s (s (s (s (s (s (s (z)))))))) y) = 
     (do 
         (o (0) (A))
-        (print_data x (z) (mod y))
-        (if (mod y))
+        (print_data x (z) y)
     );
 (print_data (c w x y) z v) = 
     (do

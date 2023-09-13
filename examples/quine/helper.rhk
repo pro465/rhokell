@@ -1,44 +1,34 @@
-(main) = (print_data (tr (input)) (z) (z));
+(main) = (print_data (tr (input)) (z));
+
+# ignore CR bytes (transform CRLF to LF)
+(tr (byte (0) (D))) = (tr (input));
 
 (tr (byte a b)) = (c a b (tr (input)));
 (tr (EOF)) = (n);
 
-(print_data x (s (s (s (s (s (s (s (z)))))))) y) = 
+(print_data x (s (s (s (s (s (s (s (s (z)))))))))) = 
     (do 
         (o (0) (A))
-        (print_data x (z) y)
+        (print_data x (z))
+        (o (0) (A))
     );
-(print_data (c w x y) z v) = 
+(print_data (c w x y) z) = 
     (do
-        (print_c)
-        (o (space))
-        (o (lparen))
+        (o (lparen) (6) (3) (space) (lparen))
         (print_hex w)
-        (o (rparen))
-        (o (space))
-        (o (lparen))
+        (o (rparen) (space) (lparen))
         (print_hex x)
+        (o (rparen) (space))
+        (print_data y (s z))
         (o (rparen))
-        (o (space))
-        (print_data y (s z) (mod v))
-        (o (rparen))
-        (if (mod v))
     );
-(print_data (n)) = (print_n);
-
-(mod (s (s (s (s (s (s (s (s (s (s (s (s (z)))))))))))))) = (z);
-(mod x) = (s x);
-
-(if (z)) = (o (0) (A));
+(print_data (n)) = (o (lparen) (6) (E) (rparen));
 
 (print_code (c x y z)) = 
     (do
         (o x y)
         (print_code z)
     );
-
-(print_c) = (o (lparen) (6) (3));
-(print_n) = (o (lparen) (6) (E) (rparen));
 
 (space) = (b (2) (0));
 (lparen) = (b (2) (8));

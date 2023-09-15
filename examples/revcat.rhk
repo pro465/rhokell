@@ -1,0 +1,15 @@
+(main) = (print (reverse (collect (input))));
+
+(collect (EOF)) = (nil);
+(collect b) = (cons b (collect (input)));
+
+(print (cons x y)) = (then (output x) (print y));
+(then a b) = b;
+
+# reverses a list
+(reverse (nil)) =  (nil);
+(reverse (cons x y)) = (append (reverse y) (cons x (nil)));
+
+# adds one list to the end of the other list
+(append (nil) x) = x;
+(append (cons x y) z) = (cons x (append y z));

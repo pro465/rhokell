@@ -1,0 +1,32 @@
+# this implements a minor variant of the algorithm given here:
+# https://www.emis.de/journals/JIS/VOL15/Nilsson/nilsson5.pdf
+#
+# specifically, instead of initializing P[k] with "22" before 
+# carrying out the increment logic, 
+# it simply returns after "setting" it to "2".
+
+# first print "1,2," 
+(main) = (kolakoski (then (print (1) (2)) (nil)));
+
+(kolakoski x) = (kolakoski (print_next (inc x)));
+
+(inc (nil)) = (cons (2) (nil));
+(inc (cons (t a) b)) = (cons a b);
+(inc (cons a b)) = (repeat (inc b) (next a));
+
+(repeat (cons a b) sym) = (cons (times (get a) sym) (cons a b));
+
+(times (1) s) = s;
+(times (2) s) = (t s);
+
+(get (t b)) = b;
+(get b) = b;
+
+(next (1)) = (2);
+(next (2)) = (1);
+
+(print_next (cons a b)) = (then (print (get a)) (cons a b));
+(print a) = (then (o (3) a (2) (C) (2) (0)) (print));
+(o a b) = (then (output (byte a b)) (o));
+
+(then a b) = b;

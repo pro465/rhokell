@@ -1,0 +1,3 @@
+(main) = (print (cons (byte (4) (8)) (cons (byte (6) (5)) (cons (byte (6) (C)) (cons (byte (6) (C)) (cons (byte (6) (F)) (cons (byte (2) (C)) (cons (byte (2) (0)) (cons (byte (7) (7)) (cons (byte (6) (F)) (cons (byte (7) (2)) (cons (byte (6) (C)) (cons (byte (6) (4)) (cons (byte (2) (1)) (cons (byte (0) (D)) (cons (byte (0) (A)) (nil)))))))))))))))));
+(print (cons x y)) = (then (output x) (print y));
+(then a b) = b;

@@ -1,0 +1,4 @@
+# text to cons list
+(tr) = (transform (input));
+(transform (byte (0) (A))) = (cons (byte (0) (A)) (nil));
+(transform x) = (cons x (transform (input)));

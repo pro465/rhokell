@@ -39,6 +39,36 @@ impl Expr {
             Expr::RedApp(f) => f.loc,
         }
     }
+    fn display(&self, parens: bool, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        crate::with_stacker(|| {
+            let parens = parens && !matches!(self, Expr::Var { .. });
+            if parens {
+                write!(fmt, "(")?;
+            }
+
+            match self {
+                Expr::RedApp(fun) => {
+                    let App { f, arg, .. } = &**fun;
+                    f.display(false, fmt)?;
+                    write!(fmt, " ")?;
+                    arg.display(true, fmt)
+                }
+                Expr::App(fun) => {
+                    let App { f, arg, .. } = &**fun;
+                    f.display(false, fmt)?;
+                    write!(fmt, " ")?;
+                    arg.display(true, fmt)
+                }
+                Expr::Var { name, .. } => write!(fmt, "{}", name),
+                Expr::Fun { name, .. } => write!(fmt, "{}", name),
+            }?;
+            if parens {
+                write!(fmt, ")")?;
+            }
+
+            Ok(())
+        })
+    }
 }
 
 impl Default for Expr {
@@ -70,18 +100,7 @@ impl PartialEq for App {
 
 impl Display for Expr {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        crate::with_stacker(|| match self {
-            Expr::RedApp(fun) => {
-                let App { f, arg, .. } = &**fun;
-                write!(fmt, "({} {})", f, arg)
-            }
-            Expr::App(fun) => {
-                let App { f, arg, .. } = &**fun;
-                write!(fmt, "({} {})", f, arg)
-            }
-            Expr::Var { name, .. } => write!(fmt, "{}", name),
-            Expr::Fun { name, .. } => write!(fmt, "({})", name),
-        })
+        self.display(true, fmt)
     }
 }
 

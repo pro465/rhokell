@@ -33,14 +33,21 @@ fn main() {
 fn repl(rules: &Rules) {
     println!("welcome to rhokell v0.2.0!\ninput `q`, `quit`, or `exit` for exiting the REPL");
 
-    let mut lines = std::io::stdin()
-        .lines()
-        .map(|e| e.expect("could not read input"));
+    let mut line = String::new();
 
     let mut prompt = |s| {
         print!("{s} ");
         io::stdout().flush().unwrap();
-        lines.next()
+        line.clear();
+        std::io::stdin()
+            .read_line(&mut line)
+            .expect("could not read input");
+        let line = line.trim();
+        if line.is_empty() {
+            None
+        } else {
+            Some(line.to_string())
+        }
     };
 
     while let Some(mut line) = prompt("=>") {

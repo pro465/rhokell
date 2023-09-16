@@ -10,5 +10,8 @@ echo "(hello)" | rhokell -r hello_world.rhk
 ```
 You should see `(world)` getting output on the REPL.
 
+# Learn
+The Esolangs [entry](https://esolangs.org/wiki/Rhokell) has more information.
+
 # License 
 all files in [./examples](./examples) are available under [public domain](https://creativecommons.org/publicdomain/zero/1.0/), while the interpreter is licensed under [GPLv3.0](/LICENSE)

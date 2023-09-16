@@ -30,10 +30,11 @@ pub(crate) fn input(e: &mut Expr) {
 
 pub(crate) fn output(e: &mut Expr) {
     if let Expr::App(f) = e {
-        let b = decode(&f.arg).unwrap_or(0);
-        let mut stdout = io::stdout();
-        stdout.write_all(&[b]).unwrap();
-        stdout.flush().unwrap();
+        let _ = decode(&f.arg).map(|b| {
+            let mut stdout = io::stdout();
+            stdout.write_all(&[b]).unwrap();
+            stdout.flush().unwrap();
+        });
         *e = fun("output".into(), e.loc()).0;
     }
 }

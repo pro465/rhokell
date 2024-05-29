@@ -1,5 +1,5 @@
 use io::Write;
-use rhokell::Rules;
+use rhokell::{Alloc, DisplayWithAlloc, Rules};
 use std::{fs, io};
 
 fn main() {
@@ -9,8 +9,10 @@ fn main() {
     } else {
         (1, false)
     };
+    let mut alloc = Alloc::new();
 
     let rules = rhokell::parse(
+        &mut alloc,
         fs::read_to_string(
             fs::canonicalize(args.get(idx).unwrap_or_else(|| help()))
                 .expect("could not canonicalize argument"),
@@ -23,14 +25,14 @@ fn main() {
     });
     //dbg!(&rules);
     if is_repl {
-        repl(&rules);
+        repl(&mut alloc, &rules);
     } else {
-        let mut expr = rhokell::parse_expr("(main)".into()).unwrap();
-        rhokell::apply(&rules, &mut expr);
+        let mut expr = rhokell::parse_expr(&mut alloc, "(main)".into()).unwrap();
+        rhokell::apply(&rules, &mut expr, &mut alloc);
     }
 }
 
-fn repl(rules: &Rules) {
+fn repl(alloc: &mut Alloc, rules: &Rules) {
     println!("welcome to rhokell v0.2.0!\ninput `q`, `quit`, or `exit` for exiting the REPL");
 
     let mut line = String::new();
@@ -64,7 +66,7 @@ fn repl(rules: &Rules) {
             line.push_str(&t);
         }
 
-        let expr = rhokell::parse_expr(line);
+        let expr = rhokell::parse_expr(alloc, line);
         let mut expr = match expr {
             Ok(x) => x,
             Err(e) => {
@@ -73,9 +75,9 @@ fn repl(rules: &Rules) {
             }
         };
 
-        rhokell::apply(&rules, &mut expr);
+        rhokell::apply(&rules, &mut expr, alloc);
 
-        println!("{}", expr);
+        println!("{}", expr.to_string(alloc));
     }
 }
 

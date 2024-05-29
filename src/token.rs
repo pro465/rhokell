@@ -1,7 +1,10 @@
 use core::fmt;
 use std::fmt::Display;
 
-use crate::error::{Error, ErrorTy, Loc};
+use crate::{
+    alloc::{Alloc, DisplayWithAlloc, Id},
+    error::{Error, ErrorTy, Loc},
+};
 
 pub struct Scanner<'a> {
     loc: Loc,
@@ -23,7 +26,8 @@ impl Token {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TokenTy {
-    Ident(String),
+    Ident(Id),
+    Comma,
     Lparen,
     Rparen,
     Equal,
@@ -31,23 +35,28 @@ pub enum TokenTy {
     Eof,
 }
 
-impl Display for TokenTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl DisplayWithAlloc for TokenTy {
+    fn display(&self, alloc: &Alloc, s: &mut String) {
         use TokenTy::*;
 
         let name = match self {
-            Ident(s) => format!("identifier `{}`", s),
+            Ident(id) => {
+                s.push_str("identifier `");
+                s.push_str(alloc.get_string(id));
+                s.push('`');
+                return;
+            }
             x => match x {
                 Equal => "token `=`",
+                Comma => "token `,`",
                 Lparen => "token `(`",
                 Rparen => "token `)`",
                 Semi => "token `;`",
                 Eof => "EOF",
                 _ => unreachable!(),
-            }
-            .to_string(),
+            },
         };
-        write!(f, "{}", name)
+        s.push_str(name)
     }
 }
 
@@ -60,26 +69,52 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn expect_identifier(&mut self) -> Result<(Loc, String), Error> {
-        let res = self.next_token()?;
+    pub fn expect_identifier(&mut self, alloc: &mut Alloc) -> Result<(Loc, Id), Error> {
+        let res = self.next_token(alloc)?;
         if let TokenTy::Ident(x) = res.ty {
             Ok((res.loc, x))
         } else {
             Err(Error {
                 loc: res.loc,
                 ty: ErrorTy::SyntaxError,
-                desc: format!("expected idenifier, found {}", res.ty),
+                desc: format!("expected identifier, found {}", res.ty.to_string(alloc)),
             })
         }
     }
 
-    pub fn expect_token(&mut self, token: TokenTy) -> Result<Token, Error> {
-        let res = self.next_token()?;
+    pub fn is_identifier(&mut self, alloc: &mut Alloc) -> Result<bool, Error> {
+        let tok = self.peek(alloc)?;
+        Ok(matches!(tok.ty, TokenTy::Ident(_)))
+    }
+
+    pub fn expect_one(&mut self, alloc: &mut Alloc, t: &[TokenTy]) -> Result<Token, Error> {
+        let res = self.next_token(alloc)?;
+        if !t.contains(&res.ty) {
+            Err(Error {
+                loc: res.loc,
+                ty: ErrorTy::SyntaxError,
+                desc: format!(
+                    "expected one of {}, found {}",
+                    list_of_token(t, alloc),
+                    res.ty.to_string(alloc)
+                ),
+            })
+        } else {
+            Ok(res)
+        }
+    }
+
+    pub fn expect_token(&mut self, alloc: &mut Alloc, token: TokenTy) -> Result<Token, Error> {
+        let res = self.next_token(alloc)?;
         if res.ty != token {
             Err(Error {
                 loc: res.loc,
                 ty: ErrorTy::SyntaxError,
-                desc: format!("expected {}, found {}", token, res.ty),
+                desc: format!(
+                    "expected {}, found {}",
+                    token.to_string(alloc),
+                    res.ty.to_string(alloc)
+                ),
             })
         } else {
             Ok(res)
@@ -90,28 +125,28 @@ impl<'a> Scanner<'a> {
         self.loc.clone()
     }
 
-    pub fn is_token(&mut self, tok: TokenTy) -> Result<bool, Error> {
-        if self.peek()?.ty == tok {
-            self.expect_token(tok)?;
+    pub fn is_token(&mut self, alloc: &mut Alloc, tok: TokenTy) -> Result<bool, Error> {
+        if self.peek(alloc)?.ty == tok {
+            self.expect_token(alloc, tok)?;
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-    pub fn next_token(&mut self) -> Result<Token, Error> {
+    pub fn next_token(&mut self, alloc: &mut Alloc) -> Result<Token, Error> {
         self.peeked
             .take()
-            .unwrap_or_else(|| self.next_token_internal())
+            .unwrap_or_else(|| self.next_token_internal(alloc))
     }
 
-    pub fn peek(&mut self) -> Result<Token, Error> {
-        let r = self.next_token();
+    pub fn peek(&mut self, alloc: &mut Alloc) -> Result<Token, Error> {
+        let r = self.next_token(alloc);
         self.peeked = Some(r.clone());
         r
     }
 
-    fn next_token_internal(&mut self) -> Result<Token, Error> {
+    fn next_token_internal(&mut self, alloc: &mut Alloc) -> Result<Token, Error> {
         self.skip_whitespace();
 
         if self.rest.is_empty() {
@@ -129,6 +164,7 @@ impl<'a> Scanner<'a> {
             let ret = Ok(Token {
                 loc: self.loc(),
                 ty: match c {
+                    ',' => Comma,
                     ';' => Semi,
                     '=' => Equal,
                     '(' => Lparen,
@@ -154,16 +190,16 @@ impl<'a> Scanner<'a> {
             }
             Ok(Token {
                 loc: self.loc(),
-                ty: self.ident(i),
+                ty: self.ident(i, alloc),
             })
         }
     }
 
-    fn ident(&mut self, i: usize) -> TokenTy {
+    fn ident(&mut self, i: usize, alloc: &mut Alloc) -> TokenTy {
         use TokenTy::*;
-        let ident = &self.rest[..i];
+        let id = alloc.alloc_or_get(&self.rest[..i]);
         self.skip(i);
-        Ident(ident.to_string())
+        Ident(id)
     }
 
     fn skip_whitespace(&mut self) {
@@ -200,4 +236,14 @@ impl<'a> Scanner<'a> {
 
 fn is_break(c: char) -> bool {
     !c.is_alphanumeric() && c != '_'
+}
+
+fn list_of_token(l: &[TokenTy], alloc: &Alloc) -> String {
+    l[..l.len() - 1]
+        .iter()
+        .map(|i| i.to_string(alloc))
+        .reduce(|a, b| a + ", " + &b)
+        .unwrap()
+        + " or "
+        + &l.last().unwrap().to_string(alloc)
 }

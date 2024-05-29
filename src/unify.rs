@@ -1,6 +1,6 @@
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
-use crate::{App, Def, Expr};
+use crate::{alloc::Id, App, Def, Expr};
 
 impl Def {
     pub fn apply(&self, e: &mut Expr) -> bool {
@@ -14,36 +14,36 @@ impl Def {
     }
 }
 
-fn unify<'a>(b: &mut HashMap<&'a str, &'a Expr>, pat: &'a Expr, e: &'a Expr) -> bool {
+fn unify<'a>(b: &mut HashMap<&'a Id, &'a Expr>, pat: &'a Expr, e: &'a Expr) -> bool {
     match (pat, e) {
-        (Expr::Var { name, .. }, _) => {
-            if let Some(e2) = b.get(&name[..]) {
+        (Expr::Var { id, .. }, _) => {
+            if let Some(e2) = b.get(&id) {
                 *e2 == e
             } else {
-                b.insert(name, e);
+                b.insert(id, e);
                 true
             }
         }
-        (Expr::App(f1), Expr::App(f2)) if f1.name == f2.name => {
+        (Expr::App(f1), Expr::App(f2)) if f1.id == f2.id => {
             unify(b, &f1.f, &f2.f) && unify(b, &f1.arg, &f2.arg)
         }
-        (Expr::App(f1), Expr::RedApp(f2)) if f1.name == f2.name => {
+        (Expr::App(f1), Expr::RedApp(f2)) if f1.id == f2.id => {
             unify(b, &f1.f, &f2.f) && unify(b, &f1.arg, &f2.arg)
         }
 
-        (Expr::Fun { name, .. }, Expr::Fun { name: name2, .. }) => name == name2,
+        (Expr::Fun { id, .. }, Expr::Fun { id: id2, .. }) => id == id2,
         _ => false,
     }
 }
 
-fn substitute(b: &HashMap<&str, &Expr>, rep: &Expr) -> Expr {
+fn substitute(b: &HashMap<&Id, &Expr>, rep: &Expr) -> Expr {
     match rep {
-        Expr::Var { name, .. } => b[&name[..]].clone(),
-        Expr::Fun { name, .. } if b.contains_key(&**name) => b[&name[..]].clone(),
+        Expr::Var { id, .. } => b[&id].clone(),
+        Expr::Fun { id, .. } if b.contains_key(&*id) => b[&id].clone(),
         Expr::App(f) => {
             let res = substitute(b, &f.f);
             Expr::App(Box::new(App {
-                name: get_name(&res),
+                id: get_id(&res),
                 f: res,
                 loc: f.loc,
                 arg: substitute(b, &f.arg),
@@ -54,10 +54,10 @@ fn substitute(b: &HashMap<&str, &Expr>, rep: &Expr) -> Expr {
     }
 }
 
-fn get_name(a: &Expr) -> Rc<String> {
+fn get_id(a: &Expr) -> Id {
     match a {
-        Expr::Var { name, .. } | Expr::Fun { name, .. } => Rc::new(name.clone()),
-        Expr::App(f) => f.name.clone(),
-        Expr::RedApp(f) => f.name.clone(),
+        Expr::Var { id, .. } | Expr::Fun { id, .. } => id.clone(),
+        Expr::App(f) => f.id.clone(),
+        Expr::RedApp(f) => f.id.clone(),
     }
 }

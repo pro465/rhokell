@@ -1,6 +1,3 @@
-use core::fmt;
-use std::fmt::Display;
-
 use crate::{
     alloc::{Alloc, DisplayWithAlloc, Id},
     error::{Error, ErrorTy, Loc},
@@ -79,28 +76,6 @@ impl<'a> Scanner<'a> {
                 ty: ErrorTy::SyntaxError,
                 desc: format!("expected identifier, found {}", res.ty.to_string(alloc)),
             })
-        }
-    }
-
-    pub fn is_identifier(&mut self, alloc: &mut Alloc) -> Result<bool, Error> {
-        let tok = self.peek(alloc)?;
-        Ok(matches!(tok.ty, TokenTy::Ident(_)))
-    }
-
-    pub fn expect_one(&mut self, alloc: &mut Alloc, t: &[TokenTy]) -> Result<Token, Error> {
-        let res = self.next_token(alloc)?;
-        if !t.contains(&res.ty) {
-            Err(Error {
-                loc: res.loc,
-                ty: ErrorTy::SyntaxError,
-                desc: format!(
-                    "expected one of {}, found {}",
-                    list_of_token(t, alloc),
-                    res.ty.to_string(alloc)
-                ),
-            })
-        } else {
-            Ok(res)
         }
     }
 
@@ -236,14 +211,4 @@ impl<'a> Scanner<'a> {
 
 fn is_break(c: char) -> bool {
     !c.is_alphanumeric() && c != '_'
-}
-
-fn list_of_token(l: &[TokenTy], alloc: &Alloc) -> String {
-    l[..l.len() - 1]
-        .iter()
-        .map(|i| i.to_string(alloc))
-        .reduce(|a, b| a + ", " + &b)
-        .unwrap()
-        + " or "
-        + &l.last().unwrap().to_string(alloc)
 }

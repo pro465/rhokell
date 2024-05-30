@@ -24,7 +24,6 @@ impl Token {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TokenTy {
     Ident(Id),
-    Comma,
     Lparen,
     Rparen,
     Equal,
@@ -45,7 +44,6 @@ impl DisplayWithAlloc for TokenTy {
             }
             x => match x {
                 Equal => "token `=`",
-                Comma => "token `,`",
                 Lparen => "token `(`",
                 Rparen => "token `)`",
                 Semi => "token `;`",
@@ -139,7 +137,6 @@ impl<'a> Scanner<'a> {
             let ret = Ok(Token {
                 loc: self.loc(),
                 ty: match c {
-                    ',' => Comma,
                     ';' => Semi,
                     '=' => Equal,
                     '(' => Lparen,

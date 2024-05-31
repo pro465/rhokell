@@ -2,13 +2,26 @@ use io::Write;
 use rhokell::{Alloc, DisplayWithAlloc, Rules};
 use std::{fs, io};
 
+enum Flag {
+    Repl,
+    Rd,
+    Normal,
+}
+
+fn parse_flags(args: &[String]) -> (Flag, usize) {
+    use Flag::*;
+    if args.get(1) == Some(&"-r".into()) {
+        (Repl, 2)
+    } else if args.get(1) == Some(&"-d".into()) {
+        (Rd, 2)
+    } else {
+        (Normal, 1)
+    }
+}
+
 fn main() {
     let args: Vec<_> = std::env::args().collect();
-    let (idx, is_repl) = if args.get(1) == Some(&"-r".into()) {
-        (2, true)
-    } else {
-        (1, false)
-    };
+    let (ty, idx) = parse_flags(&args);
     let mut alloc = Alloc::new();
 
     let rules = rhokell::parse(
@@ -24,11 +37,15 @@ fn main() {
         std::process::exit(-1);
     });
     //dbg!(&rules);
-    if is_repl {
-        repl(&mut alloc, &rules);
-    } else {
-        let mut expr = rhokell::parse_expr(&mut alloc, "(main)".into()).unwrap();
-        rhokell::apply(&rules, &mut expr, &mut alloc);
+    match ty {
+        Flag::Repl => repl(&mut alloc, &rules),
+        _ => {
+            let mut expr = rhokell::parse_expr(&mut alloc, "(main)".into()).unwrap();
+            rhokell::apply(&rules, &mut expr, &mut alloc);
+            if let Flag::Rd = ty {
+                println!("{}", expr.to_string(&alloc));
+            }
+        }
     }
 }
 
@@ -83,7 +100,7 @@ fn repl(alloc: &mut Alloc, rules: &Rules) {
 
 fn help() -> ! {
     println!(
-        "usage: {} <filename>",
+        "usage: {} [-r|-d] <filename>",
         std::env::current_exe()
             .unwrap_or_else(|_| "rhokell".into())
             .display()

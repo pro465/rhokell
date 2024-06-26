@@ -1,0 +1,34 @@
+(append (nil) x) = x;
+(append (cons x y) z) = (cons x (append y z));
+
+(head (cons a _)) = a;
+
+(tail (cons _ b)) = b;
+
+(last (cons a (nil))) = a;
+(last (cons _ b)) = (last b);
+
+(length (cons _ (nil))) = (s (z));
+(length (cons _ r)) = (s (length r));
+
+(if (t) t f) = t;
+(if (f) t f) = f;
+
+(i x) = (x);
+
+(filter f (nil)) = (nil);
+(filter f (cons a b)) = ((if (f a) (cons a) (i)) (filter f b));
+
+(map f (nil)) = (nil);
+(map f (cons a b)) = (cons (f a) (map f b));
+
+(then a b) = b;
+
+(each f (nil)) = (nil);
+(each f (cons a b)) = (then (f a) (each b));
+
+(reverse (nil)) = (nil);
+(reverse (cons a b)) = (append (reverse b) (cons a (nil)));
+
+(foldl a f (nil)) = a;
+(foldl a f (cons x y)) = (foldl (f a x) f y);

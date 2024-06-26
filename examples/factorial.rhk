@@ -1,0 +1,9 @@
+(add (z) y) = (y);
+(add (s x) y) = (s (add x y));
+(mul (z) y) = (z);
+(mul (s x) y) = (add y (mul x y));
+
+(factorial (z)) = (s (z));
+(factorial (s x)) = (mul (s x) (factorial x));
+
+(main) = (factorial (s (s (s (s (s (z)))))));

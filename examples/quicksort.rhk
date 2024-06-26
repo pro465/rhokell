@@ -1,0 +1,25 @@
+(append (nil) x) = x;
+(append (cons x y) z) = (cons x (append y z));
+
+(if (t) t f) = t;
+(if (f) t f) = f;
+
+(i x) = (x);
+
+(filter f (nil)) = (nil);
+(filter f (cons a b)) = ((if (f a) (cons a) (i)) (filter f b));
+
+(lt (z) (z)) = (f);
+(lt n (z)) = (t);
+(lt (z) n) = (f);
+(lt (s x) (s y)) = (lt x y);
+
+(geq x y) = (not (lt x y));
+
+(not (t)) = (f);
+(not (f)) = (t);
+
+(qsort (nil)) = (nil);
+(qsort (cons a b)) = (append (qsort (filter (lt a) b)) (cons a (qsort (filter (geq a) b))));
+
+(main) = (qsort (cons (s (z)) (cons (s (s (z))) (cons (z) (cons (s (s (s (s (z))))) (cons (s (z)) (cons (s (s (s (z)))) (nil))))))));

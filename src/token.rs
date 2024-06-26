@@ -207,5 +207,5 @@ impl<'a> Scanner<'a> {
 }
 
 fn is_break(c: char) -> bool {
-    !c.is_alphanumeric() && c != '_'
+    "()=;".contains(c) || c.is_whitespace()
 }

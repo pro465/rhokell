@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
         if !self.sc.is_token(alloc, TokenTy::Lparen)? {
             let (loc, id) = self.sc.expect_identifier(alloc)?;
             return Ok((
-                id,
+                id.clone(),
                 loc,
                 if is_func {
                     Expr::Fun { id, loc }

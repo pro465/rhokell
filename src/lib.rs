@@ -45,6 +45,7 @@ pub fn apply(defs: &Rules, e: &mut Expr, alloc: &mut Alloc) -> bool {
                 Expr::App(f) => {
                     changed |= apply(defs, &mut f.f, alloc);
                     changed |= apply(defs, &mut f.arg, alloc);
+                    f.id = get_id(&f.f);
                     if is_io(&f.f) {
                         io::output(alloc, e);
                     } else if !defs.contains_key(&f.id)
@@ -56,9 +57,11 @@ pub fn apply(defs: &Rules, e: &mut Expr, alloc: &mut Alloc) -> bool {
                     changed = true;
                 }
                 Expr::Fun { id, .. } => {
+                    let f_id = &*id;
                     if &alloc::INPUT == id {
                         io::input(alloc, e);
-                    } else if !defs.contains_key(&*id) || !defs[&*id].iter().any(|def| def.apply(e))
+                    } else if !defs.contains_key(&*f_id)
+                        || !defs[&*id].iter().any(|def| def.apply(e))
                     {
                         break changed;
                     }
@@ -69,6 +72,15 @@ pub fn apply(defs: &Rules, e: &mut Expr, alloc: &mut Alloc) -> bool {
             }
         }
     })
+}
+
+fn get_id(e: &Expr) -> Id {
+    match e {
+        Expr::App(f) => f.id.clone(),
+        Expr::RedApp(f) => f.id.clone(),
+        Expr::Fun { id, .. } => id.clone(),
+        Expr::Var { .. } => unreachable!(),
+    }
 }
 
 fn is_io(f: &Expr) -> bool {

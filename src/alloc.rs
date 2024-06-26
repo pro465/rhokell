@@ -4,7 +4,7 @@ pub const BYTE: Id = Id(1);
 pub const INPUT: Id = Id(2);
 pub const OUTPUT: Id = Id(3);
 
-#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
 pub struct Id(usize);
 
 pub struct Alloc {

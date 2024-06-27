@@ -1,3 +1,5 @@
+# by @JosephOziel in 2024
+
 (append (nil) x) = x;
 (append (cons x y) z) = (cons x (append y z));
 

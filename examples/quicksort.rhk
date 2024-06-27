@@ -1,3 +1,5 @@
+# by @JosephOziel in 2024
+
 (append (nil) x) = x;
 (append (cons x y) z) = (cons x (append y z));
 
@@ -19,6 +21,7 @@
 (not (t)) = (f);
 (not (f)) = (t);
 
+# seems to be pretty fast
 (qsort (nil)) = (nil);
 (qsort (cons a b)) = (append (qsort (filter (lt a) b)) (cons a (qsort (filter (geq a) b))));
 

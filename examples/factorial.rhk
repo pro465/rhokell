@@ -1,3 +1,5 @@
+# by @JosephOziel in 2024
+
 (add (z) y) = (y);
 (add (s x) y) = (s (add x y));
 (mul (z) y) = (z);

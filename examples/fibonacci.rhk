@@ -1,0 +1,10 @@
+# by @JosephOziel in 2024
+
+(add (z) y) = (y);
+(add (s x) y) = (s (add x y));
+
+(fib (z)) = (z);
+(fib (s (z))) = (s (z));
+(fib (s (s x))) = (add (fib (s x)) (fib x));
+
+(main) = (fib (s (s (s (s (s (s (s (s (z))))))))));
